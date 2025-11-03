@@ -1,0 +1,15 @@
+services:
+  - type: worker
+    name: shopee-spx-bot
+    env: python
+    plan: starter
+    region: singapore   # chọn gần VN cho nhanh
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TELEGRAM_TOKEN
+        sync: false      # set sau trên dashboard
+    disk:
+      name: bot-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
