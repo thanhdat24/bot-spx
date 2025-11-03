@@ -26,7 +26,8 @@ PRODUCT_CACHE = {}  # key -> {"items": [...], "meta": {...}, "ts": int}
 CACHE_TTL = 3 * 24 * 3600  # 3 ngày
 
 # SQLite
-DB_PATH = os.path.join(os.getcwd(), "orders.db")
+DB_PATH = os.path.join(os.getcwd(), "data", "orders.db")
+
 
 # ================== UI Helpers ==================
 def build_menu():
