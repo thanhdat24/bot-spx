@@ -6,9 +6,7 @@ from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ===== DB backend (Turso ↔︎ SQLite) =====
-from db_backend import (
-    db_init, db_upsert, db_get, db_list_spx_keys, db_purge_expired, CACHE_TTL
-)
+from db_backend import db_init, db_upsert, db_get, db_list_spx_keys, db_purge_expired, CACHE_TTL
 
 # ===== Logging =====
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
