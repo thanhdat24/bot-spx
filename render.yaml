@@ -1,14 +1,14 @@
 services:
-  - type: worker
-    name: shopee-spx-bot
+  - type: web
+    name: bot-spx
     env: python
     region: singapore
     buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    startCommand: python web_main.py
     envVars:
       - key: TELEGRAM_TOKEN
         sync: false
-    disk:
-      name: bot-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
+      - key: LIBSQL_URL
+        sync: false
+      - key: LIBSQL_AUTH_TOKEN
+        sync: false
