@@ -1,26 +1,36 @@
 # db_backend.py
 import os, json, time
 
-CACHE_TTL = 3 * 24 * 3600  # 3 ngày
+CACHE_TTL = 3 * 24 * 3600
 USE_TURSO = bool(os.getenv("LIBSQL_URL"))
 
-if USE_TURSO:
-    from libsql_client import create_client
-    _client = create_client(
-        url=os.environ["LIBSQL_URL"],
-        auth_token=os.environ.get("LIBSQL_AUTH_TOKEN")
-    )
-else:
+# --- SQLite fallback ---
+if not USE_TURSO:
     import sqlite3
     DB_PATH = os.path.join(os.getcwd(), "data", "orders.db")
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+else:
+    # KHÔNG tạo client ở import time!
+    from libsql_client import create_client
+    _client_instance = None
+
+    def _get_client():
+        """Khởi tạo libsql client khi được gọi (lúc này event loop của PTB đã chạy)."""
+        global _client_instance
+        if _client_instance is None:
+            _client_instance = create_client(
+                url=os.environ["LIBSQL_URL"],
+                auth_token=os.environ.get("LIBSQL_AUTH_TOKEN")
+            )
+        return _client_instance
+
 
 def _now() -> int:
     return int(time.time())
 
 def db_init():
     if USE_TURSO:
-        _client.execute("""
+        _get_client().execute("""
         CREATE TABLE IF NOT EXISTS product_cache (
             cache_key TEXT PRIMARY KEY,
             items_json TEXT NOT NULL,
@@ -53,7 +63,7 @@ def db_upsert(cache_key: str, items: list, ts: int | None = None, meta: dict | N
     meta_json = json.dumps(meta or {}, ensure_ascii=False)
     items_json = json.dumps(items, ensure_ascii=False)
     if USE_TURSO:
-        _client.execute(
+        _get_client().execute(
             "INSERT INTO product_cache(cache_key,items_json,meta_json,ts) VALUES(:k,:i,:m,:t) "
             "ON CONFLICT(cache_key) DO UPDATE SET items_json=:i, meta_json=:m, ts=:t",
             {"k": cache_key, "i": items_json, "m": meta_json, "t": ts}
@@ -76,7 +86,7 @@ def db_get(cache_key: str):
         return None, None
     cutoff = _now() - CACHE_TTL
     if USE_TURSO:
-        rs = _client.execute(
+       rs = _get_client().execute(
             "SELECT items_json, meta_json, ts FROM product_cache WHERE cache_key=:k", {"k": cache_key}
         )
         row = rs.rows[0] if rs.rows else None
@@ -109,7 +119,7 @@ def db_get(cache_key: str):
 def db_list_spx_keys(limit: int = 50):
     cutoff = _now() - CACHE_TTL
     if USE_TURSO:
-        rs = _client.execute(
+         rs = _get_client().execute(
             "SELECT cache_key FROM product_cache WHERE cache_key LIKE 'SPXVN%' AND ts >= :cut "
             "ORDER BY ts DESC LIMIT :lim",
             {"cut": cutoff, "lim": limit}
@@ -131,7 +141,7 @@ def db_list_spx_keys(limit: int = 50):
 def db_purge_expired():
     cutoff = _now() - CACHE_TTL
     if USE_TURSO:
-        _client.execute("DELETE FROM product_cache WHERE ts < :cut", {"cut": cutoff})
+         _get_client().execute("DELETE FROM product_cache WHERE ts < :cut", {"cut": cutoff})
     else:
         import sqlite3
         con = sqlite3.connect(DB_PATH)
