@@ -13,17 +13,22 @@ app = Flask(__name__)
 def healthz():
     return "ok", 200
 
-def run_bot():
-    # ✅ Tạo và gán event loop cho thread hiện tại
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+@app.get("/")
+def root():
+    return "healthy", 200
 
+async def _startup():
+    # Chạy trong event loop đang hoạt động để libsql/aiohttp không lỗi
+    db_init()
+    db_purge_expired()
+
+def run_bot():
     token = os.getenv("TELEGRAM_TOKEN")
     if not token:
         raise RuntimeError("Missing TELEGRAM_TOKEN")
 
-    db_init()
-    db_purge_expired()
+    # Tạo và chạy event loop cho giai đoạn khởi tạo DB
+    asyncio.run(_startup())
 
     application = Application.builder().token(token).build()
     application.add_handler(CommandHandler("start", start))
