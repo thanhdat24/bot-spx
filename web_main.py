@@ -1,4 +1,3 @@
-# web_main.py
 import os, threading, asyncio, logging
 from flask import Flask
 from telegram import Update
@@ -21,19 +20,19 @@ def healthz():
 def root():
     return "healthy", 200
 
-async def _startup():
-    db_init()
-    db_purge_expired()
-
 def run_bot():
     token = os.getenv("TELEGRAM_TOKEN")
     if not token:
         raise RuntimeError("Missing TELEGRAM_TOKEN")
 
-    # 1) Khởi tạo DB trong 1 event loop đang chạy
-    asyncio.run(_startup())
+    # ✅ Tạo & gán event loop cho thread này
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    # 2) Tạo app Telegram
+    # Khởi tạo DB (giờ là sync nên gọi trực tiếp)
+    db_init()
+    db_purge_expired()
+
     application = Application.builder().token(token).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -44,10 +43,9 @@ def run_bot():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input_text))
 
     logger.info("Starting Telegram polling (will delete webhook if set)…")
-    # 3) QUAN TRỌNG: xoá webhook & xoá update cũ rồi mới polling
     application.run_polling(
         allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True,  # xoá queue cũ & deleteWebhook phía Telegram
+        drop_pending_updates=True,   # xoá webhook & backlog phía Telegram
         poll_interval=2.0
     )
 

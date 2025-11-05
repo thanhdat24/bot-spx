@@ -1,26 +1,28 @@
+# db_backend.py
 import os, json, time
 
 CACHE_TTL = 3 * 24 * 3600  # 3 ngày
 USE_TURSO = bool(os.getenv("LIBSQL_URL"))
 
-# --- SQLite fallback ---
 if not USE_TURSO:
     import sqlite3
     DB_PATH = os.path.join(os.getcwd(), "data", "orders.db")
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 else:
-    from libsql_client import create_client
+    # ⚠️ Dùng client ĐỒNG BỘ
+    from libsql_client import create_client_sync
     _client_instance = None
 
     def _get_client():
-        """Khởi tạo libsql client khi cần (lazy init)."""
+        """Khởi tạo libsql client (sync) khi cần."""
         global _client_instance
         if _client_instance is None:
-            _client_instance = create_client(
+            _client_instance = create_client_sync(
                 url=os.environ["LIBSQL_URL"],
                 auth_token=os.environ.get("LIBSQL_AUTH_TOKEN")
             )
         return _client_instance
+
 
 
 def _now() -> int:
