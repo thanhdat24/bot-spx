@@ -1,8 +1,7 @@
 # web_main.py
-import os, threading
+import os, threading, asyncio
 from flask import Flask
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
-
 from main import (
     db_init, db_purge_expired,
     handle_input_text, start, help_command, balance, buy, confirm, list_cmd
@@ -15,10 +14,16 @@ def healthz():
     return "ok", 200
 
 def run_bot():
+    # ✅ Tạo và gán event loop cho thread hiện tại
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     token = os.getenv("TELEGRAM_TOKEN")
     if not token:
         raise RuntimeError("Missing TELEGRAM_TOKEN")
-    db_init(); db_purge_expired()
+
+    db_init()
+    db_purge_expired()
 
     application = Application.builder().token(token).build()
     application.add_handler(CommandHandler("start", start))
